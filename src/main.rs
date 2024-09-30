@@ -4,8 +4,11 @@ use std::{
     io::{Cursor, Read, Result, Write},
 };
 
+use json_helper::parse_json;
 use tera::{Context, Tera};
 use zip::{write::SimpleFileOptions, ZipArchive, ZipWriter};
+
+mod json_helper;
 
 fn main() -> Result<()> {
     storage_temp_gen_to_mem("temp.zip")?;
@@ -59,6 +62,21 @@ fn zip_from_memory(files: &HashMap<String, String>) -> Result<Vec<u8>> {
     Ok(buffer.into_inner())
 }
 
+fn prepare_temp_values() -> Result<Context> {
+    let template_params = parse_json("test.json")?;
+
+    print!("{}", template_params);
+
+    let mut context = Context::new();
+    
+    for (key, value) in template_params.as_object().unwrap() {
+        context.insert(key, value);
+    }
+    // context.insert("name", "Rust Mem Temp");
+
+    Ok(context)
+}
+
 fn storage_temp_gen_to_mem<P: AsRef<std::path::Path>>(path: P) -> Result<()> {
     let zip_data = std::fs::read(path)?;
 
@@ -70,8 +88,7 @@ fn storage_temp_gen_to_mem<P: AsRef<std::path::Path>>(path: P) -> Result<()> {
         tera.add_raw_template(name, content).unwrap();
     }
 
-    let mut context = Context::new();
-    context.insert("name", "Rust Mem Temp");
+    let context = prepare_temp_values()?;
 
     let processed_files = process_templates(&unzip_files, &mut tera, &context);
 
